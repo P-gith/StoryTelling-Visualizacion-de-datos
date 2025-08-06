@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Netflix en Números: Un Viaje Visual por el Entretenimiento</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+</head>
+<body>
+    <header class="hero">
+        <div class="hero-content">
+            <h1>Netflix en Números</h1>
+            <p class="subtitle">Un viaje visual por las películas y series más populares</p>
+        </div>
+        <div class="scroll-indicator">
+            <span>Scroll para descubrir</span>
+            <div class="arrow-down"></div>
+        </div>
+    </header>
+
+    <main class="story-container">
+        <!-- Sección 1: Introducción -->
+        <section class="story-section" id="intro">
+            <div class="narrative">
+                <h2>El Universo del Entretenimiento Digital</h2>
+                <p>Desde thrillers que nos mantienen al borde del asiento hasta comedias que nos hacen reír, 
+                   Netflix ha transformado la manera en que consumimos entretenimiento. En este análisis, 
+                   exploramos las películas y series más populares, sus géneros, calificaciones y tendencias 
+                   que definen nuestra era digital.</p>
+            </div>
+            <div class="visualization" id="overview-viz"></div>
+        </section>
+
+        <!-- Sección 2: Distribución de Ratings -->
+        <section class="story-section" id="ratings">
+            <div class="narrative">
+                <h2>La Batalla por la Excelencia</h2>
+                <p>¿Qué hace que una película o serie sea verdaderamente popular? La respuesta está en las calificaciones. 
+                   Observemos cómo se distribuyen los ratings entre todo el contenido disponible.</p>
+                <div class="insight-box">
+                    <strong>Insight:</strong> La mayoría del contenido se concentra entre 7.0 y 8.5 puntos, 
+                    mostrando la alta calidad del catálogo de Netflix.
+                </div>
+            </div>
+            <div class="visualization" id="ratings-viz"></div>
+        </section>
+
+        <!-- Sección 3: Géneros Más Populares -->
+        <section class="story-section" id="genres">
+            <div class="narrative">
+                <h2>El ADN del Entretenimiento</h2>
+                <p>Los géneros revelan nuestras preferencias más profundas. Desde el drama que toca nuestro corazón 
+                   hasta la acción que acelera nuestro pulso, cada género cuenta una historia sobre lo que buscamos 
+                   en el entretenimiento.</p>
+            </div>
+            <div class="visualization" id="genres-viz"></div>
+        </section>
+
+        <!-- Sección 4: Duración vs Rating -->
+        <section class="story-section" id="duration">
+            <div class="narrative">
+                <h2>El Tiempo de la Narrativa</h2>
+                <p>¿Existe una relación entre la duración de una película y su calidad? 
+                   Exploremos si las obras maestras necesitan más tiempo para desarrollarse 
+                   o si la brevedad es sinónimo de impacto.</p>
+            </div>
+            <div class="visualization" id="duration-viz"></div>
+        </section>
+
+        <!-- Sección 5: Top Contenido -->
+        <section class="story-section" id="top-content">
+            <div class="narrative">
+                <h2>Las Joyas de la Corona</h2>
+                <p>Finalmente, descubramos cuáles son las películas y series que han logrado capturar 
+                   tanto la atención de la crítica como del público, estableciendo nuevos estándares 
+                   en el entretenimiento digital.</p>
+            </div>
+            <div class="visualization" id="top-content-viz"></div>
+        </section>
+
+        <!-- Sección Interactiva -->
+        <section class="story-section interactive" id="explore">
+            <div class="narrative">
+                <h2>Explora por Ti Mismo</h2>
+                <p>Usa los controles para filtrar y explorar el contenido según tus preferencias.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="genre-filter">Género:</label>
+                        <select id="genre-filter">
+                            <option value="all">Todos</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="rating-range">Rating mínimo:</label>
+                        <input type="range" id="rating-range" min="5" max="10" step="0.1" value="7">
+                        <span id="rating-value">7.0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="interactive-content">
+                <div class="visualization" id="interactive-viz"></div>
+                <div class="top-10-container">
+                    <h3 id="top-10-title">Top 10 - Todos los Géneros</h3>
+                    <div class="top-10-list" id="top-10-list"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Datos basados en películas y series populares de Netflix | Visualización con D3.js</p>
+    </footer>
+
+    <script src="scripts.js"></script>
+    <script src="scroll-effects.js"></script>
+</body>
+</html>
