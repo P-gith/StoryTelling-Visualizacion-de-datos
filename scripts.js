@@ -420,8 +420,15 @@ function createGenresChart() {
     }
     
     const margin = { top: 40, right: 40, bottom: 80, left: 140 };
-    const width = 550 - margin.left - margin.right;
-    const height = 450 - margin.top - margin.bottom;
+    const baseDimensions = getResponsiveDimensions(550, 450, '#genres-viz');
+    const width = baseDimensions.width - margin.left - margin.right;
+    const height = baseDimensions.height - margin.top - margin.bottom;
+    
+    // Ajustar márgenes para móviles
+    if (window.innerWidth <= 768) {
+        margin.left = Math.min(120, margin.left);
+        margin.bottom = Math.min(60, margin.bottom);
+    }
     
     // Crear SVG mejorado
     const svg = container.append("svg")
@@ -588,8 +595,16 @@ function createDurationScatter() {
     container.html("");
     
     const margin = { top: 50, right: 60, bottom: 80, left: 80 };
-    const width = 550 - margin.left - margin.right;
-    const height = 400 - margin.top - margin.bottom;
+    const baseDimensions = getResponsiveDimensions(550, 400, '#duration-viz');
+    const width = baseDimensions.width - margin.left - margin.right;
+    const height = baseDimensions.height - margin.top - margin.bottom;
+    
+    // Ajustar márgenes para móviles
+    if (window.innerWidth <= 768) {
+        margin.left = Math.min(60, margin.left);
+        margin.right = Math.min(40, margin.right);
+        margin.bottom = Math.min(60, margin.bottom);
+    }
     
     const svg = container.append("svg")
         .attr("width", width + margin.left + margin.right)
@@ -814,7 +829,32 @@ function createDurationScatter() {
     
 }
 
-// Función auxiliar para calcular regresión lineal simple
+// Función auxiliar para obtener dimensiones responsivas
+function getResponsiveDimensions(baseWidth, baseHeight, containerSelector) {
+    const container = document.querySelector(containerSelector);
+    if (!container) return { width: baseWidth, height: baseHeight };
+    
+    const containerWidth = container.getBoundingClientRect().width;
+    const isMobile = window.innerWidth <= 768;
+    const isTablet = window.innerWidth <= 1024;
+    
+    let width, height;
+    
+    if (isMobile) {
+        width = Math.min(containerWidth - 40, baseWidth * 0.7);
+        height = baseHeight * 0.8;
+    } else if (isTablet) {
+        width = Math.min(containerWidth - 60, baseWidth * 0.85);
+        height = baseHeight * 0.9;
+    } else {
+        width = Math.min(containerWidth - 80, baseWidth);
+        height = baseHeight;
+    }
+    
+    return { width: Math.max(300, width), height: Math.max(200, height) };
+}
+
+// Función para calcular regresión lineal simple
 function calculateLinearRegression(data) {
     const n = data.length;
     if (n < 2) return null;
@@ -1148,4 +1188,23 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Iniciando aplicación...');
     setupScrollAnimations();
     loadData();
+    
+    // Agregar listener para redimensionamiento responsivo
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            // Solo recrear visualizaciones si el cambio es significativo
+            const newWidth = window.innerWidth;
+            if (Math.abs(newWidth - (window.lastWidth || newWidth)) > 100) {
+                console.log('Redimensionando visualizaciones...');
+                if (data.length > 0) {
+                    createVisualizations();
+                }
+                window.lastWidth = newWidth;
+            }
+        }, 300);
+    });
+    
+    window.lastWidth = window.innerWidth;
 });
