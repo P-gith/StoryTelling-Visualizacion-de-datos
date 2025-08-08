@@ -162,7 +162,7 @@ class SimpleScrollEffects {
             { scaleY: 0, transformOrigin: 'bottom' },
             { 
                 scaleY: 1,
-                duration: 0.8,
+                duration: 0.7,
                 stagger: 0.05,
                 ease: 'power2.out'
             }

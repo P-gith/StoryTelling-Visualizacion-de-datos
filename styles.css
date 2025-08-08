@@ -435,12 +435,6 @@ body {
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
-.bar:hover {
-    opacity: 0.8;
-    transform: scale(1.05);
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
-}
-
 .dot {
     transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     cursor: pointer;
@@ -483,10 +477,6 @@ body {
     position: relative;
     z-index: 1;
     transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
 }
 
 .stat-card rect {
@@ -1005,7 +995,7 @@ footer p {
 
 /* Interactive Chart Styles */
 .interactive-bar {
-    fill: var(--accent-gradient);
+    /* Removido: fill: var(--accent-gradient); para permitir colores dinámicos desde JavaScript */
     transition: all 0.3s ease;
     cursor: pointer;
 }

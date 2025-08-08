@@ -348,10 +348,17 @@ function createRatingsHistogram() {
         .attr("y", d => y(d.length))
         .attr("height", d => height - y(d.length))
         .attr("fill", "url(#ratingGradient)")
+        .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
+            // Cambiar color al pasar el mouse sin animaciones
+            d3.select(this).attr("fill", "#fc0c60ff"); // Color sólido naranja al hacer hover
             showTooltip(event, `Rating: ${d.x0.toFixed(1)}-${d.x1.toFixed(1)}<br>Cantidad: ${d.length}`);
         })
-        .on("mouseout", hideTooltip);
+        .on("mouseout", function(event, d) {
+            // Restaurar el gradiente original
+            d3.select(this).attr("fill", "url(#ratingGradient)");
+            hideTooltip();
+        });
     
     // Ejes con etiquetas mejoradas
     const xAxis = g.append("g")
@@ -1233,8 +1240,9 @@ function updateInteractiveViz() {
     
     // Gradiente para las barras
     const defs = svg.append("defs");
+    const gradientId = `interactiveBarGradient_${Date.now()}`;
     const gradient = defs.append("linearGradient")
-        .attr("id", "interactiveBarGradient")
+        .attr("id", gradientId)
         .attr("x1", "0%")
         .attr("y1", "0%")
         .attr("x2", "0%")
@@ -1248,8 +1256,11 @@ function updateInteractiveViz() {
         .attr("offset", "100%")
         .attr("style", "stop-color:#00f2fe;stop-opacity:1");
     
+    // Encontrar el valor máximo para destacar la barra más alta
+    const maxCount = d3.max(ratingData, d => d.count);
+    
     // Crear barras
-    g.selectAll(".interactive-bar")
+    const bars = g.selectAll(".interactive-bar")
         .data(ratingData)
         .enter().append("rect")
         .attr("class", "interactive-bar")
@@ -1257,9 +1268,12 @@ function updateInteractiveViz() {
         .attr("width", x.bandwidth())
         .attr("y", height)
         .attr("height", 0)
-        .attr("fill", "url(#interactiveBarGradient)")
+        .attr("fill", d => {
+            const isMax = d.count === maxCount;
+            return isMax ? "#e74c3c" : "#3498db";
+        })
         .on("mouseover", function(event, d) {
-            showTooltip(event, `Rating: ${d.rating}<br>Cantidad: ${d.count}`);
+            showTooltip(event, `Rating: ${d.rating}<br>Cantidad: ${d.count}${d.count === maxCount ? '<br><strong>🏆 Máximo valor!</strong>' : ''}`);
         })
         .on("mouseout", hideTooltip)
         .transition()
