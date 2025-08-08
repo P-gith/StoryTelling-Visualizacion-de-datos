@@ -5,142 +5,73 @@ let processedData = {};
 // Función para cargar y procesar los datos
 async function loadData() {
     try {
-        const rawData = await d3.csv("n_movies.csv");
+        const rawData = await d3.csv("n_movies_clean.csv");
         
-        // Procesar los datos
+        // Procesar los datos del dataset limpio
         data = rawData.map(d => {
-            // Limpiar géneros - remover comillas y dividir por comas
+            // Usar datos ya procesados del dataset limpio
             let genres = [];
-            if (d.genre) {
-                // Remover comillas dobles al inicio y final
-                let genreString = d.genre.replace(/^"/, '').replace(/"$/, '');
-                // Dividir por comas y limpiar espacios
-                genres = genreString.split(',').map(g => g.trim()).filter(g => g.length > 0);
+            try {
+                // Convertir la lista de géneros desde string
+                if (d.genres_list && d.genres_list !== '[]') {
+                    genres = JSON.parse(d.genres_list.replace(/'/g, '"'));
+                }
+            } catch (e) {
+                genres = [d.primary_genre || 'Unknown'];
             }
             
-            // Convertir rating a número
-            const rating = d.rating && d.rating !== '' ? +d.rating : null;
-            
-            // Extraer duración en minutos
-            let duration = null;
-            if (d.duration && d.duration.includes('min')) {
-                const match = d.duration.match(/(\d+)/);
-                if (match) duration = +match[1];
-            }
-            
-            // Limpiar votos - remover comillas y comas
-            let votes = 0;
-            if (d.votes) {
-                const votesString = d.votes.replace(/[",]/g, '');
-                votes = +votesString || 0;
-            }
-            
-            // Extraer año de inicio
-            let year = null;
-            if (d.year) {
-                const yearMatch = d.year.match(/(\d{4})/);
-                if (yearMatch) year = +yearMatch[1];
+            // Convertir directores y actores desde string
+            let directores = [];
+            let actores = [];
+            try {
+                if (d.directores && d.directores !== '[]') {
+                    directores = JSON.parse(d.directores.replace(/'/g, '"'));
+                }
+                if (d.actores && d.actores !== '[]') {
+                    actores = JSON.parse(d.actores.replace(/'/g, '"'));
+                }
+            } catch (e) {
+                directores = [];
+                actores = [];
             }
             
             return {
                 title: d.title,
-                year: year,
+                year: +d.start_year || null,
+                endYear: +d.end_year || null,
                 certificate: d.certificate,
-                duration: duration,
+                duration: +d.duration_minutes || null,
                 genres: genres,
-                primaryGenre: genres[0] || 'Unknown',
-                rating: rating,
+                primaryGenre: d.primary_genre || 'Unknown',
+                rating: +d.rating_numeric || null,
                 description: d.description,
-                votes: votes,
-                stars: d.stars
+                votes: +d.votes_numeric || 0,
+                contentType: d.content_type,
+                directores: directores,
+                actores: actores,
+                seriesDuration: +d.series_duration_years || 0,
+                genreCount: +d.genre_count || 0,
+                directorCount: +d.director_count || 0,
+                actorCount: +d.actor_count || 0
             };
-        }).filter(d => d.rating !== null); // Filtrar elementos sin rating
+        }).filter(d => d.rating !== null && d.rating > 0); // Filtrar elementos sin rating válido
         
-        console.log('Datos cargados antes de limpiar:', data.length, 'elementos');
+        console.log('Datos cargados del dataset limpio:', data.length, 'elementos');
         
-        // Limpiar datos duplicados
-        data = removeDuplicates(data);
-        
-        // Limpiar datos inconsistentes
-        data = cleanInconsistentData(data);
-        
-        console.log('Datos después de limpiar duplicados e inconsistencias:', data.length, 'elementos');
-        
-        // Mostrar estadísticas de limpieza
-        showDataCleaningStats();
+        // Mostrar estadísticas del dataset limpio
+        showDataStats();
         
         processData();
         createVisualizations();
         
     } catch (error) {
         console.error('Error cargando datos:', error);
-        showError('Error al cargar los datos. Por favor, verifica que el archivo n_movies.csv esté disponible.');
+        showError('Error al cargar los datos. Por favor, verifica que el archivo n_movies_clean.csv esté disponible.');
     }
 }
 
-// Función para eliminar duplicados del dataset
-function removeDuplicates(data) {
-    const seen = new Map();
-    const cleaned = [];
-    
-    data.forEach(item => {
-        // Crear una clave única basada en título y año (si está disponible)
-        const key = `${item.title.toLowerCase().trim()}|${item.year || 'unknown'}`;
-        
-        if (!seen.has(key)) {
-            seen.set(key, item);
-            cleaned.push(item);
-        } else {
-            // Si encontramos un duplicado, mantenemos el que tenga más votos
-            const existing = seen.get(key);
-            if (item.votes > existing.votes) {
-                // Reemplazar en el array cleaned
-                const index = cleaned.findIndex(d => d === existing);
-                if (index !== -1) {
-                    cleaned[index] = item;
-                    seen.set(key, item);
-                }
-            }
-        }
-    });
-    
-    console.log(`Eliminados ${data.length - cleaned.length} duplicados`);
-    return cleaned;
-}
-
-// Función para limpiar datos inconsistentes
-function cleanInconsistentData(data) {
-    const cleaned = data.filter(item => {
-        // Filtrar títulos vacíos o inválidos
-        if (!item.title || item.title.trim() === '' || item.title.length < 2) {
-            return false;
-        }
-        
-        // Filtrar ratings fuera del rango válido
-        if (item.rating < 1 || item.rating > 10) {
-            return false;
-        }
-        
-        // Filtrar duraciones negativas o extremadamente altas (más de 10 horas)
-        if (item.duration && (item.duration < 0 || item.duration > 600)) {
-            return false;
-        }
-        
-        // Filtrar años fuera del rango razonable
-        if (item.year && (item.year < 1900 || item.year > new Date().getFullYear() + 5)) {
-            return false;
-        }
-        
-        return true;
-    });
-    
-    console.log(`Eliminados ${data.length - cleaned.length} elementos con datos inconsistentes`);
-    return cleaned;
-}
-
-// Función para mostrar estadísticas de limpieza de datos
-function showDataCleaningStats() {
-    // Verificar calidad de los datos
+// Función para mostrar estadísticas del dataset limpio
+function showDataStats() {
     const statsContainer = document.querySelector('#overview-viz');
     if (statsContainer) {
         const statsDiv = document.createElement('div');
@@ -148,31 +79,33 @@ function showDataCleaningStats() {
             position: absolute;
             top: 10px;
             right: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px;
             border-radius: 8px;
             font-size: 12px;
             color: #2c3e50;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            max-width: 200px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            max-width: 220px;
             z-index: 1000;
+            border-left: 4px solid #74b9ff;
         `;
         
-        const missingData = {
-            duration: data.filter(d => !d.duration).length,
-            year: data.filter(d => !d.year).length,
-            genres: data.filter(d => !d.genres || d.genres.length === 0).length,
-            description: data.filter(d => !d.description).length
-        };
+        // Estadísticas mejoradas del dataset limpio
+        const movies = data.filter(d => d.contentType === 'Movie').length;
+        const series = data.filter(d => d.contentType === 'TV Series').length;
+        const miniseries = data.filter(d => d.contentType === 'Miniseries').length;
+        const avgRating = d3.mean(data, d => d.rating).toFixed(1);
+        const avgDuration = d3.mean(data.filter(d => d.duration), d => d.duration).toFixed(0);
         
         statsDiv.innerHTML = `
-            <strong>📊 Calidad de Datos</strong><br>
+            <strong>📊 Dataset Limpio</strong><br>
             <small>
-                Sin duración: ${missingData.duration}<br>
-                Sin año: ${missingData.year}<br>
-                Sin géneros: ${missingData.genres}<br>
-                Sin descripción: ${missingData.description}<br>
-                <strong>Total limpio: ${data.length}</strong>
+                🎬 Películas: ${movies}<br>
+                📺 Series TV: ${series}<br>
+                🎭 Miniseries: ${miniseries}<br>
+                ⭐ Rating promedio: ${avgRating}<br>
+                ⏱️ Duración promedio: ${avgDuration} min<br>
+                <strong>Total: ${data.length} títulos</strong>
             </small>
         `;
         
@@ -183,12 +116,12 @@ function showDataCleaningStats() {
         statsDiv.className = 'data-stats';
         statsContainer.appendChild(statsDiv);
         
-        // Auto-remover después de 10 segundos
+        // Auto-remover después de 12 segundos
         setTimeout(() => {
             if (statsDiv.parentNode) {
                 statsDiv.remove();
             }
-        }, 10000);
+        }, 12000);
     }
 }
 
@@ -224,6 +157,46 @@ function processData() {
     
     // Datos para scatter plot duración vs rating
     processedData.durationRating = data.filter(d => d.duration && d.duration > 0);
+    
+    // Nuevos datos para visualizaciones mejoradas
+    // Distribución por tipo de contenido
+    processedData.contentTypeData = [
+        { type: 'Movie', count: data.filter(d => d.contentType === 'Movie').length },
+        { type: 'TV Series', count: data.filter(d => d.contentType === 'TV Series').length },
+        { type: 'Miniseries', count: data.filter(d => d.contentType === 'Miniseries').length },
+        { type: 'Unknown', count: data.filter(d => !d.contentType || d.contentType === 'Unknown').length }
+    ].filter(d => d.count > 0);
+    
+    // Análisis de directores más prolíficos
+    const directorCounts = {};
+    data.forEach(d => {
+        if (d.directores && d.directores.length > 0) {
+            d.directores.forEach(director => {
+                if (director && director.trim() !== '') {
+                    const cleanDirector = director.trim();
+                    directorCounts[cleanDirector] = (directorCounts[cleanDirector] || 0) + 1;
+                }
+            });
+        }
+    });
+    
+    processedData.topDirectors = Object.entries(directorCounts)
+        .map(([director, count]) => ({ director, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    
+    // Evolución temporal mejorada
+    const yearCounts = {};
+    data.forEach(d => {
+        if (d.year && d.year >= 1950 && d.year <= 2024) {
+            const decade = Math.floor(d.year / 10) * 10;
+            yearCounts[decade] = (yearCounts[decade] || 0) + 1;
+        }
+    });
+    
+    processedData.timelineData = Object.entries(yearCounts)
+        .map(([decade, count]) => ({ decade: +decade, count }))
+        .sort((a, b) => a.decade - b.decade);
 }
 
 // Función para mostrar errores
@@ -238,6 +211,7 @@ function createVisualizations() {
     createOverviewViz();
     createRatingsHistogram();
     createGenresChart();
+    createContentTypeChart(); // Nueva visualización
     createDurationScatter();
     createTopContentList();
     setupInteractiveViz();
@@ -272,12 +246,15 @@ function createOverviewViz() {
         .attr("offset", "100%")
         .attr("style", "stop-color:#0984e3;stop-opacity:0.9");
     
-    // Estadísticas generales
+    // Estadísticas generales mejoradas con el dataset limpio
     const stats = [
         { label: "Total de Títulos", value: data.length },
         { label: "Rating Promedio", value: d3.mean(data, d => d.rating).toFixed(1) },
         { label: "Géneros Únicos", value: new Set(data.flatMap(d => d.genres)).size },
-        { label: "Rating Máximo", value: d3.max(data, d => d.rating).toFixed(1) }
+        { 
+            label: "Películas vs Series", 
+            value: `${Math.round((data.filter(d => d.contentType === 'Movie').length / data.length) * 100)}% Movies` 
+        }
     ];
     
     // Usar grid simple sin animaciones
@@ -297,14 +274,12 @@ function createOverviewViz() {
             const y = margin + row * (cardHeight + margin);
             return `translate(${x}, ${y})`;
         });
-    
+
     cards.append("rect")
         .attr("width", cardWidth)
         .attr("height", cardHeight)
         .attr("rx", 10)
-        .attr("fill", "url(#cardGradient)");
-    
-    cards.append("text")
+        .attr("fill", "url(#cardGradient)");    cards.append("text")
         .attr("x", cardWidth / 2)
         .attr("y", cardHeight / 2 - 5)
         .attr("text-anchor", "middle")
@@ -378,27 +353,63 @@ function createRatingsHistogram() {
         })
         .on("mouseout", hideTooltip);
     
-    // Ejes
-    g.append("g")
+    // Ejes con etiquetas mejoradas
+    const xAxis = g.append("g")
         .attr("class", "axis")
         .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x))
-        .append("text")
+        .call(d3.axisBottom(x));
+    
+    // Estilo del eje X
+    xAxis.selectAll("text")
+        .style("font-family", "Inter, sans-serif")
+        .style("font-size", "12px")
+        .style("fill", "#7f8c8d");
+    
+    xAxis.selectAll("line")
+        .style("stroke", "#ddd");
+    
+    xAxis.select(".domain")
+        .style("stroke", "#ccc");
+    
+    // Etiqueta del eje X
+    xAxis.append("text")
         .attr("class", "axis-label")
         .attr("x", width / 2)
         .attr("y", 35)
         .style("text-anchor", "middle")
+        .style("font-family", "Inter, sans-serif")
+        .style("font-size", "12px")
+        .style("font-weight", "600")
+        .style("fill", "#2c3e50")
         .text("Rating IMDb");
     
-    g.append("g")
+    const yAxis = g.append("g")
         .attr("class", "axis")
-        .call(d3.axisLeft(y))
-        .append("text")
+        .call(d3.axisLeft(y));
+    
+    // Estilo del eje Y
+    yAxis.selectAll("text")
+        .style("font-family", "Inter, sans-serif")
+        .style("font-size", "12px")
+        .style("fill", "#7f8c8d");
+    
+    yAxis.selectAll("line")
+        .style("stroke", "#ddd");
+    
+    yAxis.select(".domain")
+        .style("stroke", "#ccc");
+    
+    // Etiqueta del eje Y
+    yAxis.append("text")
         .attr("class", "axis-label")
         .attr("transform", "rotate(-90)")
-        .attr("y", -25)
-        .attr("x", -height / 2)
+        .attr("y", -31)
+        .attr("x", -height /2)
         .style("text-anchor", "middle")
+        .style("font-family", "Inter, sans-serif")
+        .style("font-size", "12px")
+        .style("font-weight", "600")
+        .style("fill", "#2c3e50")
         .text("Cantidad de Títulos");
 }
 
@@ -589,7 +600,155 @@ function createGenresChart() {
     console.log('Gráfico de géneros completado');
 }
 
-// 4. Scatter plot duración vs rating
+// 4. Nuevo gráfico de distribución por tipo de contenido
+function createContentTypeChart() {
+    const container = d3.select("#content-type-viz");
+    if (container.empty()) {
+        console.log('Container #content-type-viz no encontrado, saltando visualización');
+        return;
+    }
+    
+    container.html("");
+    
+    const margin = { top: 50, right: 120, bottom: 50, left: 120 }; // Aumentado right y left margins
+    const baseDimensions = getResponsiveDimensions(400, 400, '#content-type-viz');
+    const width = baseDimensions.width - margin.left - margin.right;
+    const height = baseDimensions.height - margin.top - margin.bottom;
+    const radius = Math.min(width, height) / 2;
+    
+    const svg = container.append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .style("max-width", "100%")
+        .style("height", "auto");
+    
+    const g = svg.append("g")
+        .attr("transform", `translate(${(width + margin.left + margin.right) / 2}, ${(height + margin.top + margin.bottom) / 2})`);
+    
+    // Título
+    svg.append("text")
+        .attr("class", "chart-title")
+        .attr("x", (width + margin.left + margin.right) / 2)
+        .attr("y", 30)
+        .attr("text-anchor", "middle")
+        .style("font-family", "Playfair Display, serif")
+        .style("font-size", "18px")
+        .style("font-weight", "600")
+        .style("fill", "#2c3e50")
+        .text("Distribución por Tipo de Contenido");
+    
+    // Configurar escalas de color
+    const colorScale = d3.scaleOrdinal()
+        .domain(processedData.contentTypeData.map(d => d.type))
+        .range(['#e74c3c', '#3498db', '#9b59b6', '#95a5a6']);
+    
+    // Configurar pie
+    const pie = d3.pie()
+        .value(d => d.count)
+        .sort(null);
+    
+    const arc = d3.arc()
+        .innerRadius(radius * 0.5) // Aumentado de 0.4 a 0.5 para más espacio central
+        .outerRadius(radius * 0.8);
+    
+    const outerArc = d3.arc()
+        .innerRadius(radius * 0.9)
+        .outerRadius(radius * 0.9);
+    
+    // Crear arcos
+    const arcs = g.selectAll(".arc")
+        .data(pie(processedData.contentTypeData))
+        .enter().append("g")
+        .attr("class", "arc");
+    
+    // Crear paths de los arcos
+    arcs.append("path")
+        .attr("d", arc)
+        .attr("fill", d => colorScale(d.data.type))
+        .attr("stroke", "white")
+        .attr("stroke-width", 2)
+        .style("opacity", 0.9)
+        .style("cursor", "pointer")
+        .on("mouseover", function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(150)
+                .style("opacity", 1)
+                .attr("transform", "scale(1.05)");
+            
+            const percentage = ((d.data.count / data.length) * 100).toFixed(1);
+            showTooltip(event, `
+                <strong>${d.data.type}</strong><br>
+                ${d.data.count} títulos<br>
+                ${percentage}% del total
+            `);
+        })
+        .on("mouseout", function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(150)
+                .style("opacity", 0.9)
+                .attr("transform", "scale(1)");
+            hideTooltip();
+        });
+    
+    // Agregar etiquetas
+    arcs.append("text")
+        .attr("transform", function(d) {
+            const pos = outerArc.centroid(d);
+            pos[0] = radius * 1.1 * (midAngle(d) < Math.PI ? 1 : -1); // Aumentado de 1 a 1.1
+            return `translate(${pos})`;
+        })
+        .attr("dy", ".35em")
+        .style("text-anchor", function(d) {
+            return midAngle(d) < Math.PI ? "start" : "end";
+        })
+        .style("font-family", "Inter, sans-serif")
+        .style("font-size", "12px")
+        .style("font-weight", "600")
+        .style("fill", "#2c3e50")
+        .text(d => `${d.data.type} (${d.data.count})`);
+    
+    // Líneas conectoras
+    arcs.append("polyline")
+        .attr("stroke", "#999")
+        .attr("stroke-width", 1)
+        .attr("fill", "none")
+        .attr("points", function(d) {
+            const pos = outerArc.centroid(d);
+            pos[0] = radius * 1.05 * (midAngle(d) < Math.PI ? 1 : -1); // Ajustado para coincidir
+            return [arc.centroid(d), outerArc.centroid(d), pos];
+        });
+    
+    // Función auxiliar para calcular ángulo medio
+    function midAngle(d) {
+        return d.startAngle + (d.endAngle - d.startAngle) / 2;
+    }
+    
+    // Estadísticas en el centro
+    const statsGroup = g.append("g")
+        .attr("class", "center-stats");
+    
+    statsGroup.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dy", "-0.3em") // Ajustado de -0.5em a -0.3em
+        .style("font-family", "Playfair Display, serif")
+        .style("font-size", "20px") // Reducido de 24px a 20px
+        .style("font-weight", "bold")
+        .style("fill", "#2c3e50")
+        .text(data.length);
+    
+    statsGroup.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dy", "1.2em") // Ajustado de 1em a 1.2em para mejor espaciado
+        .style("font-family", "Inter, sans-serif")
+        .style("font-size", "12px") // Reducido de 14px a 12px
+        .style("fill", "#7f8c8d")
+        .text("Total títulos");
+}
+
+// 5. Scatter plot duración vs rating (función anterior con número actualizado)
 function createDurationScatter() {
     const container = d3.select("#duration-viz");
     container.html("");
@@ -870,45 +1029,117 @@ function calculateLinearRegression(data) {
     return { slope, intercept };
 }
 
-// 5. Lista de top contenido
+// 6. Lista de top contenido mejorada
 function createTopContentList() {
     const container = d3.select("#top-content-viz");
     container.html("");
     
+    // Crear título para la sección
+    container.append("h3")
+        .style("color", "#2c3e50")
+        .style("margin-bottom", "1rem")
+        .style("font-family", "Playfair Display, serif")
+        .text("🏆 Top Contenido Mejor Calificado");
+    
     const listContainer = container.append("div")
         .style("max-height", "400px")
-        .style("overflow-y", "auto");
+        .style("overflow-y", "auto")
+        .style("padding-right", "8px");
     
     const items = listContainer.selectAll(".top-content-item")
         .data(processedData.topContent)
         .enter()
         .append("div")
-        .attr("class", "top-content-item");
+        .attr("class", "top-content-item")
+        .style("background", "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)")
+        .style("border-radius", "8px")
+        .style("padding", "1rem")
+        .style("margin-bottom", "0.75rem")
+        .style("border-left", "4px solid #74b9ff")
+        .style("box-shadow", "0 2px 8px rgba(0,0,0,0.1)")
+        .style("transition", "transform 0.2s ease")
+        .on("mouseover", function() {
+            d3.select(this).style("transform", "translateY(-2px)");
+        })
+        .on("mouseout", function() {
+            d3.select(this).style("transform", "translateY(0px)");
+        });
+
+    // Título y tipo de contenido
+    const headerDiv = items.append("div")
+        .style("display", "flex")
+        .style("justify-content", "space-between")
+        .style("align-items", "flex-start")
+        .style("margin-bottom", "0.5rem");
     
-    items.append("h4")
+    headerDiv.append("h4")
         .style("color", "#2c3e50")
-        .style("margin-bottom", "0.5rem")
+        .style("margin", "0")
+        .style("font-family", "Playfair Display, serif")
+        .style("font-size", "1.1rem")
         .text(d => d.title);
     
-    items.append("p")
-        .style("margin", "0.25rem 0")
-        .style("color", "#666")
-        .html(d => `<strong>Rating:</strong> ${d.rating} ⭐ | <strong>Votos:</strong> ${d.votes.toLocaleString()}`);
+    headerDiv.append("span")
+        .style("background", d => d.contentType === 'Movie' ? '#e74c3c' : d.contentType === 'TV Series' ? '#3498db' : '#9b59b6')
+        .style("color", "white")
+        .style("padding", "2px 8px")
+        .style("border-radius", "12px")
+        .style("font-size", "0.75rem")
+        .style("font-weight", "600")
+        .text(d => d.contentType || 'Movie');
     
-    items.append("p")
-        .style("margin", "0.25rem 0")
+    // Rating y estadísticas
+    items.append("div")
+        .style("display", "flex")
+        .style("gap", "1rem")
+        .style("margin", "0.5rem 0")
         .style("color", "#666")
-        .html(d => `<strong>Género:</strong> ${d.primaryGenre} | <strong>Año:</strong> ${d.year || 'N/A'}`);
-    
-    items.append("p")
-        .style("margin-top", "0.5rem")
-        .style("color", "#555")
         .style("font-size", "0.9rem")
+        .html(d => {
+            const year = d.year ? d.year : 'N/A';
+            const endYear = d.endYear && d.endYear !== d.year ? `-${d.endYear}` : '';
+            const duration = d.duration ? `${d.duration} min` : 'N/A';
+            return `
+                <span style="font-weight: 600; color: #f39c12;">⭐ ${d.rating}</span>
+                <span>📅 ${year}${endYear}</span>
+                <span>⏱️ ${duration}</span>
+                <span>🗳️ ${d.votes.toLocaleString()}</span>
+            `;
+        });
+    
+    // Géneros
+    items.append("div")
+        .style("margin", "0.5rem 0")
+        .style("color", "#666")
+        .html(d => `<strong>🎭 Géneros:</strong> ${d.genres.slice(0, 3).join(', ')}`);
+    
+    // Directores y actores (si están disponibles)
+    items.filter(d => d.directores && d.directores.length > 0)
+        .append("div")
+        .style("margin", "0.25rem 0")
+        .style("color", "#666")
+        .style("font-size", "0.85rem")
+        .html(d => `<strong>🎬 Director(es):</strong> ${d.directores.slice(0, 2).join(', ')}`);
+    
+    items.filter(d => d.actores && d.actores.length > 0)
+        .append("div")
+        .style("margin", "0.25rem 0")
+        .style("color", "#666")
+        .style("font-size", "0.85rem")
+        .html(d => `<strong>🎭 Actores:</strong> ${d.actores.slice(0, 3).join(', ')}`);
+    
+    // Descripción
+    items.append("p")
+        .style("margin-top", "0.75rem")
+        .style("margin-bottom", "0")
+        .style("color", "#555")
+        .style("font-size", "0.85rem")
         .style("line-height", "1.4")
-        .text(d => d.description ? d.description.substring(0, 150) + "..." : "Sin descripción disponible");
+        .style("font-style", "italic")
+        .text(d => d.description ? d.description.substring(0, 120) + "..." : "Sin descripción disponible");
 }
 
-// 6. Configurar visualización interactiva
+// 7. Configurar visualización interactiva
 function setupInteractiveViz() {
     const genreFilter = d3.select("#genre-filter");
     const ratingRange = d3.select("#rating-range");
@@ -1073,15 +1304,14 @@ function updateInteractiveViz() {
     updateTop10List(filteredData, selectedGenre);
 }
 
-// Función para actualizar el Top 10 - Mejorada
-// Función para actualizar el Top 10 - Mejorada
+// Función para actualizar el Top 10 - Mejorada con dataset limpio
 function updateTop10List(filteredData, selectedGenre) {
     const top10Container = d3.select("#top-10-list");
     const titleElement = d3.select("#top-10-title");
     
     // Actualizar título
     const genreText = selectedGenre === "all" ? "Todos los Géneros" : selectedGenre;
-    titleElement.text(`Top 10 - ${genreText}`);
+    titleElement.text(`🏆 Top 10 - ${genreText}`);
     
     // Obtener top 10 ordenado por rating y luego por votos
     const top10Data = filteredData
@@ -1121,20 +1351,48 @@ function updateTop10List(filteredData, selectedGenre) {
     const contentDiv = listItems.append("div")
         .attr("class", "item-content");
     
-    // Título
-    contentDiv.append("div")
+    // Título con tipo de contenido
+    const titleDiv = contentDiv.append("div")
+        .attr("class", "item-title-container")
+        .style("display", "flex")
+        .style("justify-content", "space-between")
+        .style("align-items", "center");
+    
+    titleDiv.append("div")
         .attr("class", "item-title")
         .text(d => d.title);
     
-    // Información adicional
+    titleDiv.append("span")
+        .attr("class", "content-type-badge")
+        .style("background", d => d.contentType === 'Movie' ? '#e74c3c' : d.contentType === 'TV Series' ? '#3498db' : '#9b59b6')
+        .style("color", "white")
+        .style("padding", "2px 6px")
+        .style("border-radius", "8px")
+        .style("font-size", "0.7rem")
+        .style("font-weight", "600")
+        .text(d => d.contentType === 'Movie' ? '🎬' : d.contentType === 'TV Series' ? '📺' : '🎭');
+    
+    // Información adicional mejorada
     contentDiv.append("div")
         .attr("class", "item-info")
         .html(d => {
             const year = d.year ? d.year : 'N/A';
+            const endYear = d.endYear && d.endYear !== d.year ? `-${d.endYear}` : '';
             const duration = d.duration ? `${d.duration} min` : 'N/A';
             const genres = d.genres.slice(0, 2).join(', '); // Mostrar solo los primeros 2 géneros
-            return `${year} • ${duration} • ${genres}`;
+            return `${year}${endYear} • ${duration} • ${genres}`;
         });
+    
+    // Directores (si están disponibles)
+    contentDiv.selectAll(null)
+        .data(d => d.directores && d.directores.length > 0 ? [d] : [])
+        .enter()
+        .append("div")
+        .attr("class", "item-director")
+        .style("font-size", "0.8rem")
+        .style("color", "#666")
+        .style("margin-top", "2px")
+        .html(d => `🎬 ${d.directores.slice(0, 2).join(', ')}`);
     
     // Rating y votos
     const ratingDiv = listItems.append("div")
